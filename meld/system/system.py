@@ -127,6 +127,7 @@ class System(object):
         self._atom_index = None
         self._setup_indexing()
 
+
     @property
     def top_string(self):
         return self._top_string
@@ -134,7 +135,7 @@ class System(object):
     @property
     def n_atoms(self):
         return self._n_atoms
-
+        
     @property
     def coordinates(self):
         return self._coordinates
@@ -283,7 +284,7 @@ class RunOptions(object):
             'runner', 'timesteps', 'minimize_steps',
             'implicit_solvent_model', 'cutoff', 'use_big_timestep',
             'use_amap', 'amap_alpha_bias', 'amap_beta_bias',
-            'min_mc', 'run_mc', 'ccap', 'ncap']
+            'min_mc', 'run_mc', 'ccap', 'ncap', 'eco_cutoff', 'alpha_carbon_indeces']
         allowed_attributes += ['_{}'.format(item) for item in allowed_attributes]
         if not name in allowed_attributes:
             raise ValueError('Attempted to set unknown attribute {}'.format(name))
@@ -296,6 +297,7 @@ class RunOptions(object):
         self._minimize_steps = 1000
         self._implicit_solvent_model = 'gbNeck2'
         self._cutoff = None
+        
         self._use_big_timestep = False
         self._use_amap = False
         self._amap_alpha_bias = 1.0
@@ -309,6 +311,8 @@ class RunOptions(object):
         self._run_mc = None
         self._ccap = False
         self._ncap = False
+        self._eco_cutoff = 0.0
+        self._alpha_carbon_indeces = []
 
     @property
     def min_mc(self):
@@ -351,7 +355,7 @@ class RunOptions(object):
     @property
     def sc_alpha_max_coulomb(self):
         return self._sc_alpha_max_coulomb
-
+    
     @sc_alpha_max_coulomb.setter
     def sc_alpha_max_coulomb(self, new_value):
         self._sc_alpha_max_coulomb = float(new_value)
@@ -421,6 +425,31 @@ class RunOptions(object):
             if value <= 0:
                 raise RuntimeError('cutoff must be > 0')
             self._cutoff = value
+            
+    @property
+    def eco_cutoff(self):
+        return self._eco_cutoff
+
+    @eco_cutoff.setter
+    def eco_cutoff(self, value):
+        if value is None:
+            self._eco_cutoff = None
+        else:
+            value = float(value)
+            if value <= 0:
+                raise RuntimeError('eco_cutoff must be > 0')
+            self._eco_cutoff = value
+    
+    @property
+    def alpha_carbon_indeces(self):
+        return self._alpha_carbon_indeces
+
+    @alpha_carbon_indeces.setter
+    def alpha_carbon_indeces(self, value):
+        if value is None:
+            self._alpha_carbon_indeces = []
+        else:
+            self._alpha_carbon_indeces = value
 
     @property
     def use_big_timestep(self):
@@ -480,3 +509,12 @@ class RunOptions(object):
             assert self._sc_alpha_max_coulomb > self._sc_alpha_min
             assert self._sc_alpha_max_lennard_jones >= self._sc_alpha_max_coulomb
             assert self._sc_alpha_max_lennard_jones <= 1.0
+            
+    def make_alpha_carbon_list(self, atom_name_list): # loops thru the list, finding all name 'ca' atoms, then appending them to the 
+        ca_list = []
+        print "atom_name_list:", atom_name_list
+        for i, atom_name in enumerate(atom_name_list):
+            if atom_name == "CA":
+                ca_list.append(i)
+        self.alpha_carbon_indeces = ca_list
+      

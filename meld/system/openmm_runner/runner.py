@@ -21,11 +21,11 @@ import tempfile
 
 logger = logging.getLogger(__name__)
 
-try:
-    from meldplugin import MeldForce, RdcForce
-except ImportError as e:
-    logger.warning('Could not import meldplugin. Are you sure it is installed correctly?\n'
-                   'Attempts to use meld restraints will fail.')
+#try:
+from meldplugin import MeldForce, RdcForce, vectori
+#except ImportError as e:
+#    logger.warning('Could not import meldplugin. Are you sure it is installed correctly?\n'
+#                   'Attempts to use meld restraints will fail.')
 
 try:
     from onedimcomplugin import OneDimComForce
@@ -62,6 +62,7 @@ class OpenMMRunner(object):
         self._sc_lambda_coulomb = 1.0
         self._sc_lambda_lj = 1.0
         self._force_dict = {}
+        self._system_atom_names = system._atom_names
 
     def set_alpha_and_timestep(self, alpha, timestep):
         self._alpha = alpha
@@ -125,7 +126,7 @@ class OpenMMRunner(object):
             meld_rests = _update_always_active_restraints(self._always_on_restraints, self._alpha,
                                                           self._timestep, self._force_dict)
             _update_selectively_active_restraints(self._selectable_collections, meld_rests, self._alpha,
-                                                  self._timestep, self._force_dict)
+                                                  self._timestep, self._force_dict, self._options.eco_cutoff, self._options.alpha_carbon_indeces)
             for force in self._force_dict.values():
                 if force:
                     force.updateParametersInContext(self._simulation.context)
@@ -137,7 +138,7 @@ class OpenMMRunner(object):
             prmtop = _parm_top_from_string(self._parm_string)
             sys = _create_openmm_system(prmtop, self._options.cutoff, self._options.use_big_timestep,
                                         self._options.implicit_solvent_model, self._options.remove_com)
-
+            
             if self._options.softcore:
                 sys = softcore.add_soft_core(sys)
 
@@ -148,7 +149,9 @@ class OpenMMRunner(object):
             meld_rests = _add_always_active_restraints(sys, self._always_on_restraints, self._alpha,
                                                        self._timestep, self._force_dict)
             _add_selectively_active_restraints(sys, self._selectable_collections, meld_rests, self._alpha,
-                                               self._timestep, self._force_dict)
+                                               self._timestep, self._force_dict, self._options.eco_cutoff, self._options.alpha_carbon_indeces)
+                                               
+            _add_alpha_carbon_list(self._system_atom_names)
 
             self._integrator = _create_integrator(self._temperature, self._options.use_big_timestep)
 
@@ -325,7 +328,7 @@ def _update_always_active_restraints(restraint_list, alpha, timestep, force_dict
     return selectable_restraints
 
 
-def _add_selectively_active_restraints(system, collections, always_on, alpha, timestep, force_dict):
+def _add_selectively_active_restraints(system, collections, always_on, alpha, timestep, force_dict, eco_cutoff, alpha_carbon_indeces):
     if not (collections or always_on):
         # we don't need to do anything
         force_dict['meld'] = None
@@ -333,7 +336,14 @@ def _add_selectively_active_restraints(system, collections, always_on, alpha, ti
 
     # otherwise we need a MeldForce
     meld_force = MeldForce()
-
+    #print "eco_cutoff:", eco_cutoff
+    #print "alpha_carbon_list:", alpha_carbon_indeces
+    meld_force.setEcoCutoff(eco_cutoff)
+    print "mark0"
+    alpha_carbon_list = vectori()
+    alpha_carbon_list = alpha_carbon_indeces #[3, 16, 25, 40, 49]
+    meld_force.setAlphaCarbonVector(alpha_carbon_list)
+    
     if always_on:
         group_list = []
         for rest in always_on:
@@ -354,14 +364,30 @@ def _add_selectively_active_restraints(system, collections, always_on, alpha, ti
     system.addForce(meld_force)
     force_dict['meld'] = meld_force
 
+def _add_alpha_carbon_list(atom_names):
+    'uploads a list of alpha carbon indeces into the MELD plugin.'
+    alpha_carbon_list = []
+    # iterate through the atoms to find all the alpha carbons
+    for (i, name) in enumerate(atom_names):
+        #print "name:", name
+        if name == "CA":
+            alpha_carbon_list.append(i) # append the index of the alpha carbon
+    #print "alpha_carbon_list:", alpha_carbon_list
+    #return alpha_carbon_list
 
-def _update_selectively_active_restraints(collections, always_on, alpha, timestep, force_dict):
+def _update_selectively_active_restraints(collections, always_on, alpha, timestep, force_dict, eco_cutoff, alpha_carbon_indeces):
     meld_force = force_dict['meld']
     dist_index = 0
     hyper_index = 0
     tors_index = 0
     dist_prof_index = 0
     tors_prof_index = 0
+    
+    meld_force.setEcoCutoff(eco_cutoff)
+    alpha_carbon_list = vectori()
+    alpha_carbon_list = alpha_carbon_indeces #[3, 16, 25, 40, 49]
+    meld_force.setAlphaCarbonVector(alpha_carbon_list)
+    
     if always_on:
         for rest in always_on:
             dist_index, hyper_index, tors_index, dist_prof_index, tors_prof_index = _update_meld_restraint(rest, meld_force, alpha, timestep,
@@ -610,7 +636,7 @@ def _add_meld_restraint(rest, meld_force, alpha, timestep):
     if isinstance(rest, DistanceRestraint):
         rest_index = meld_force.addDistanceRestraint(rest.atom_index_1 - 1, rest.atom_index_2 - 1,
                                                     rest.r1, rest.r2, rest.r3, rest.r4,
-                                                    rest.k * scale)
+                                                    rest.k * scale, rest.doing_eco, rest.eco_factor, rest.res_index1, rest.res_index2)
 
     elif isinstance(rest, HyperbolicDistanceRestraint):
         rest_index = meld_force.addHyperbolicDistanceRestraint(rest.atom_index_1 - 1, rest.atom_index_2 - 1,
@@ -651,7 +677,7 @@ def _update_meld_restraint(rest, meld_force, alpha, timestep, dist_index, hyper_
     scale = rest.scaler(alpha) * rest.ramp(timestep)
     if isinstance(rest, DistanceRestraint):
         meld_force.modifyDistanceRestraint(dist_index, rest.atom_index_1 - 1, rest.atom_index_2 - 1, rest.r1,
-                                           rest.r2, rest.r3, rest.r4, rest.k * scale)
+                                           rest.r2, rest.r3, rest.r4, rest.k * scale, rest.doing_eco, rest.eco_factor, rest.res_index1, rest.res_index2)
         dist_index += 1
     elif isinstance(rest, HyperbolicDistanceRestraint):
         meld_force.modifyHyperbolicDistanceRestraint(hyper_index, rest.atom_index_1 - 1, rest.atom_index_2 - 1,

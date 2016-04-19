@@ -78,14 +78,18 @@ class DistanceRestraint(SelectableRestraint):
     _restraint_key_ = 'distance'
 
     def __init__(self, system, scaler, ramp, atom_1_res_index, atom_1_name, atom_2_res_index, atom_2_name,
-                 r1, r2, r3, r4, k):
+                 r1, r2, r3, r4, k, doing_eco=False, eco_factor=1.0):
         self.atom_index_1 = system.index_of_atom(atom_1_res_index, atom_1_name)
         self.atom_index_2 = system.index_of_atom(atom_2_res_index, atom_2_name)
+        self.res_index1 = atom_1_res_index - 1
+        self.res_index2 = atom_2_res_index - 1 # NOTE: we want residue indeces started from 0. Make sure that all residue numbers are sequencial in the prmtop and pdbs loaded
         self.r1 = r1
         self.r2 = r2
         self.r3 = r3
         self.r4 = r4
         self.k = k
+        self.doing_eco = doing_eco
+        self.eco_factor = eco_factor
         self.scaler = scaler
         self.ramp = ramp
         self._check(system)
