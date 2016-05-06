@@ -339,10 +339,13 @@ def _add_selectively_active_restraints(system, collections, always_on, alpha, ti
     #print "eco_cutoff:", eco_cutoff
     #print "alpha_carbon_list:", alpha_carbon_indeces
     meld_force.setEcoCutoff(eco_cutoff)
-    print "mark0"
     alpha_carbon_list = vectori()
     alpha_carbon_list = alpha_carbon_indeces #[3, 16, 25, 40, 49]
     meld_force.setAlphaCarbonVector(alpha_carbon_list)
+    
+    # LANE: adding this list to keep track of the sorted ordering of the MELD distance restraints
+    dist_rest_sorted = []
+    counter = 0
     
     if always_on:
         group_list = []
@@ -358,11 +361,26 @@ def _add_selectively_active_restraints(system, collections, always_on, alpha, ti
             for rest in group.restraints:
                 rest_index = _add_meld_restraint(rest, meld_force, alpha, timestep)
                 restraint_indices.append(rest_index)
+                if isinstance(rest, DistanceRestraint): # only consider the distance restraints
+                  rest_tuple = (rest.res_index1, rest.res_index2, counter) # LANE: zeroth = restraint residue 1, first = restraint residue 2, second = restraint index
+                  dist_rest_sorted.append(rest_tuple)
+                  counter += 1
             group_index = meld_force.addGroup(restraint_indices, group.num_active)
             group_indices.append(group_index)
         meld_force.addCollection(group_indices, coll.num_active)
     system.addForce(meld_force)
     force_dict['meld'] = meld_force
+    
+    # LANE: sort the distance restraint list
+    dist_rest_sorted.sort()
+    dist_rest_sorted_flat = [] # a list that will be 1-D, but holds the restraints in order
+    for i in dist_rest_sorted:
+      for j in i:
+        dist_rest_sorted_flat.append(j)
+    dist_rest_sorted_vector = vectori()
+    dist_rest_sorted_vector = dist_rest_sorted_flat
+    meld_force.setDistRestSortedVector(dist_rest_sorted_vector)
+    
 
 def _add_alpha_carbon_list(atom_names):
     'uploads a list of alpha carbon indeces into the MELD plugin.'
@@ -387,6 +405,8 @@ def _update_selectively_active_restraints(collections, always_on, alpha, timeste
     alpha_carbon_list = vectori()
     alpha_carbon_list = alpha_carbon_indeces #[3, 16, 25, 40, 49]
     meld_force.setAlphaCarbonVector(alpha_carbon_list)
+    dist_rest_sorted = []
+    counter = 0
     
     if always_on:
         for rest in always_on:
@@ -395,9 +415,21 @@ def _update_selectively_active_restraints(collections, always_on, alpha, timeste
     for coll in collections:
         for group in coll.groups:
             for rest in group.restraints:
+                if isinstance(rest, DistanceRestraint): # only consider the distance restraints
+                  rest_tuple = (rest.res_index1, rest.res_index2, counter) # LANE: zeroth = restraint residue 1, first = restraint residue 2, second = restraint index
+                  dist_rest_sorted.append(rest_tuple)
+                counter += 1
                 dist_index, hyper_index, tors_index, dist_prof_index, tors_prof_index = _update_meld_restraint(rest, meld_force, alpha, timestep,
-                                                                                dist_index, hyper_index, tors_index, dist_prof_index, tors_prof_index)
-
+                                                                             dist_index, hyper_index, tors_index, dist_prof_index, tors_prof_index)
+    # LANE: sort the distance restraint list
+    dist_rest_sorted.sort()
+    dist_rest_sorted_flat = [] # a list that will be 1-D, but holds the restraints in order
+    for i in dist_rest_sorted:
+      for j in i:
+        dist_rest_sorted_flat.append(j)
+    dist_rest_sorted_vector = vectori()
+    dist_rest_sorted_vector = dist_rest_sorted_flat
+    meld_force.setDistRestSortedVector(dist_rest_sorted_vector)
 
 def _add_confinement_restraints(system, restraint_list, alpha, timestep, force_dict):
     # split restraints into confinement and others
@@ -636,7 +668,7 @@ def _add_meld_restraint(rest, meld_force, alpha, timestep):
     if isinstance(rest, DistanceRestraint):
         rest_index = meld_force.addDistanceRestraint(rest.atom_index_1 - 1, rest.atom_index_2 - 1,
                                                     rest.r1, rest.r2, rest.r3, rest.r4,
-                                                    rest.k * scale, rest.doing_eco, rest.eco_factor, rest.res_index1, rest.res_index2)
+                                                    rest.k * scale, rest.doing_eco, rest.eco_factor, rest.eco_constant, rest.eco_linear, rest.res_index1, rest.res_index2)
 
     elif isinstance(rest, HyperbolicDistanceRestraint):
         rest_index = meld_force.addHyperbolicDistanceRestraint(rest.atom_index_1 - 1, rest.atom_index_2 - 1,
@@ -677,7 +709,7 @@ def _update_meld_restraint(rest, meld_force, alpha, timestep, dist_index, hyper_
     scale = rest.scaler(alpha) * rest.ramp(timestep)
     if isinstance(rest, DistanceRestraint):
         meld_force.modifyDistanceRestraint(dist_index, rest.atom_index_1 - 1, rest.atom_index_2 - 1, rest.r1,
-                                           rest.r2, rest.r3, rest.r4, rest.k * scale, rest.doing_eco, rest.eco_factor, rest.res_index1, rest.res_index2)
+                                           rest.r2, rest.r3, rest.r4, rest.k * scale, rest.doing_eco, rest.eco_factor, rest.eco_constant, rest.eco_linear, rest.res_index1, rest.res_index2)
         dist_index += 1
     elif isinstance(rest, HyperbolicDistanceRestraint):
         meld_force.modifyHyperbolicDistanceRestraint(hyper_index, rest.atom_index_1 - 1, rest.atom_index_2 - 1,
