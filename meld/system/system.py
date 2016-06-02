@@ -325,7 +325,10 @@ class RunOptions(object):
             'amap_beta_bias', 'min_mc', 'run_mc', 'ccap', 'ncap',
             'solvation', 'enable_pme', 'enable_pressure_coupling',
             'pressure', 'pressure_coupling_update_steps',
-            'pme_tolerance']
+            'pme_tolerance', 'doing_rest2', 'doing_rest2_bonds',
+            'doing_rest2_angles', 'doing_rest2_torsions', 'doing_rest2_nonbondeds',
+            'rest2_solute_bond_indeces', 'rest2_solute_angle_indeces',
+            'rest2_solute_torsion_indeces', 'rest2_solute_particle_indeces']
         allowed_attributes += ['_{}'.format(item) for
                                item in allowed_attributes]
         if name not in allowed_attributes:
@@ -365,6 +368,89 @@ class RunOptions(object):
         self._pressure = 1.0 * atmosphere
         self._pressure_coupling_update_steps = 25
         self._pme_tolerance = 0.0005
+        self._doing_rest2 = False
+        self._doing_rest2_bonds = False
+        self._doing_rest2_angles = False
+        self._doing_rest2_torsions = True
+        self._doing_rest2_nonbondeds = True
+        self._rest2_solute_bond_indeces = []
+        self._rest2_solute_angle_indeces = []
+        self._rest2_solute_torsion_indeces = []
+        self._rest2_solute_particle_indeces = []
+
+
+    # rest2 parameters
+    @property
+    def doing_rest2(self):
+        return self._doing_rest2
+
+    @doing_rest2.setter
+    def doing_rest2(self, new_value):
+        self._doing_rest2 = new_value
+
+    @property
+    def doing_rest2_bonds(self):
+        return self._doing_rest2_bonds
+
+    @doing_rest2_bonds.setter
+    def doing_rest2_bonds(self, new_value):
+        self._doing_rest2_bonds = new_value
+
+    @property
+    def doing_rest2_angles(self):
+        return self._doing_rest2_angles
+
+    @doing_rest2_angles.setter
+    def doing_rest2_angles(self, new_value):
+        self._doing_rest2_angles = new_value
+
+    @property
+    def doing_rest2_torsions(self):
+        return self._doing_rest2_torsions
+
+    @doing_rest2_torsions.setter
+    def doing_rest2_torsions(self, new_value):
+        self._doing_rest2_torsions = new_value
+
+    @property
+    def doing_rest2_nonbondeds(self):
+        return self._doing_rest2_nonbondeds
+
+    @doing_rest2_nonbondeds.setter
+    def doing_rest2_nonbondeds(self, new_value):
+        self._doing_rest2_nonbondeds = new_value
+
+    @property
+    def rest2_solute_bond_indeces(self):
+        return self._rest2_solute_bond_indeces
+
+    @rest2_solute_bond_indeces.setter
+    def rest2_solute_bond_indeces(self, new_value):
+        self._rest2_solute_bond_indeces = new_value
+
+    @property
+    def rest2_solute_angle_indeces(self):
+        return self._rest2_solute_angle_indeces
+
+    @rest2_solute_angle_indeces.setter
+    def rest2_solute_angle_indeces(self, new_value):
+        self._rest2_solute_angle_indeces = new_value
+
+    @property
+    def rest2_solute_torsion_indeces(self):
+        return self._rest2_solute_torsion_indeces
+
+    @rest2_solute_torsion_indeces.setter
+    def rest2_solute_torsion_indeces(self, new_value):
+        self._rest2_solute_torsion_indeces = new_value
+
+    @property
+    def rest2_solute_particle_indeces(self):
+        return self._rest2_solute_particle_indeces
+
+    @rest2_solute_particle_indeces.setter
+    def rest2_solute_particle_indeces(self, new_value):
+        self._rest2_solute_particle_indeces = new_value
 
     # solvation is a read-only property that must be set
     # when the options are created
