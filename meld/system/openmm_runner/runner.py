@@ -69,12 +69,26 @@ class OpenMMRunner(object):
         self._alpha = 0.
         self._temperature = None
         self._force_dict = {}
+        
+        # REST2 variables
+        self.doing_rest2 = options.doing_rest2 # False
+        self.doing_rest2_bonds = options.doing_rest2_bonds # False
+        self.doing_rest2_angles = options.doing_rest2_angles # False
+        self.doing_rest2_torsions = options.doing_rest2_torsions # True
+        self.doing_rest2_nonbondeds = options.doing_rest2_nonbondeds # True
+        self.rest2_solute_bond_indeces = options.rest2_solute_bond_indeces #[]
+        self.rest2_solute_angle_indeces = options.rest2_solute_angle_indeces #[]
+        self.rest2_solute_torsion_indeces = options.rest2_solute_torsion_indeces #[]
+        self.rest2_solute_particle_indeces = options.rest2_solute_particle_indeces #[]
 
     def set_alpha_and_timestep(self, alpha, timestep):
         self._alpha = alpha
         self._timestep = timestep
         self._temperature = self.temperature_scaler(alpha)
+        if self.doing_rest2:
+          self._rest2()
         self._initialize_simulation()
+        
 
     @log_timing(logger)
     def minimize_then_run(self, state):
@@ -105,7 +119,44 @@ class OpenMMRunner(object):
         e_potential = (e_potential.value_in_unit(kilojoule / mole) /
                        GAS_CONSTANT / self._temperature)
         return e_potential
-
+    
+    def _rest2(self):
+      'Modify the solute FF parameters to run REST2 replica exchange simulations'
+      mysys = self._simulation.system
+      beta_factor = self.temperature_scaler(0) / self.temperature_scaler(self._alpha) # this depends on the temperature of this replica versus the lowest replica
+      sqrt_beta_factor = np.sqrt(beta_factor)
+      if self.doing_rest2_bonds:
+        bonds = mysys.getForce(0)
+        for bond_id in self.rest2_solute_bond_indeces:
+          oldparam = bonds.getBondParameters(bond_id)
+          oldparam[3] *= beta_factor # scale the spring constant by our factor
+          bonds.setBondParameters(bond_id,*oldparam)
+          
+      if self.doing_rest2_angles:
+        angles = mysys.getForce(1)
+        for angle_id in range(angles.getNumAngles()):
+          oldparam = angles.getAngleParameters(angle_id)
+          oldparam[4] *= beta_factor
+          angles.setAngleParameters(angle_id,*oldparam)
+      
+      if self.doing_rest2_torsions:
+        torsions = mysys.getForce(2)  # pull out the Force objects for these different classes of forces
+        for tors_id in range(torsions.getNumTorsions()):
+          oldparam = torsions.getTorsionParameters(tors_id)
+          oldparam[6] *= beta_factor
+          torsions.setTorsionParameters(tors_id,*oldparam)
+      
+      if self.doing_rest2_nonbondeds:
+        nonbondeds = mysys.getForce(3)
+        for particle_id in range(nonbondeds.getNumParticles()):
+          oldparam = nonbondeds.getParticleParameters(particle_id)
+          oldparam[0] *= sqrt_beta_factor
+          oldparam[2] *= beta_factor
+          nonbondeds.setParticleParameters(particle_id, *oldparam)
+      
+      self._temperature = self.temperature_scaler(0) # TODO: verify that this is OK!
+      
+    
     def _initialize_simulation(self):
         if self._initialized:
             # update temperature and pressure
