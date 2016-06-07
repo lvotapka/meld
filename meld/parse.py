@@ -123,7 +123,8 @@ def get_sequence_from_AA3(filename=None, contents=None, file=None, capped=False,
 
 
 def get_secondary_structure_restraints(system, scaler, ramp=None, torsion_force_constant=2.48, distance_force_constant=2.48,
-                                       quadratic_cut=2.0, filename=None, contents=None, file=None):
+                                       quadratic_cut=2.0, filename=None, contents=None, file=None, doing_eco=False, 
+                                       eco_factor=0.0, eco_constant=1.0, eco_linear=0.0):
     """
     Get a list of secondary structure restraints.
 
@@ -160,11 +161,14 @@ def get_secondary_structure_restraints(system, scaler, ramp=None, torsion_force_
             rests.append(phi)
             rests.append(psi)
         d1 = DistanceRestraint(system, scaler, ramp, helix.start+1, 'CA', helix.start+4, 'CA',
-                               0, 0.485, 0.561, 0.561 + quadratic_cut, distance_force_constant)
+                               0, 0.485, 0.561, 0.561 + quadratic_cut, distance_force_constant,
+                               doing_eco=doing_eco, eco_factor=eco_factor, eco_constant=eco_constant, eco_linear=eco_linear)
         d2 = DistanceRestraint(system, scaler, ramp, helix.start+2, 'CA', helix.start+5, 'CA',
-                               0, 0.485, 0.561, 0.561 + quadratic_cut, distance_force_constant)
+                               0, 0.485, 0.561, 0.561 + quadratic_cut, distance_force_constant,
+                               doing_eco=doing_eco, eco_factor=eco_factor, eco_constant=eco_constant, eco_linear=eco_linear)
         d3 = DistanceRestraint(system, scaler, ramp, helix.start+1, 'CA', helix.start+5, 'CA',
-                               0, 0.581, 0.684, 0.684 + quadratic_cut, distance_force_constant)
+                               0, 0.581, 0.684, 0.684 + quadratic_cut, distance_force_constant,
+                               doing_eco=doing_eco, eco_factor=eco_factor, eco_constant=eco_constant, eco_linear=eco_linear)
         rests.append(d1)
         rests.append(d2)
         rests.append(d3)
@@ -182,11 +186,14 @@ def get_secondary_structure_restraints(system, scaler, ramp=None, torsion_force_
             rests.append(phi)
             rests.append(psi)
         d1 = DistanceRestraint(system, scaler, ramp, ext.start+1, 'CA', ext.start+4, 'CA',
-                               0, 0.785, 1.063, 1.063 + quadratic_cut, distance_force_constant)
+                               0, 0.785, 1.063, 1.063 + quadratic_cut, distance_force_constant,
+                               doing_eco=doing_eco, eco_factor=eco_factor, eco_constant=eco_constant, eco_linear=eco_linear)
         d2 = DistanceRestraint(system, scaler, ramp, ext.start+2, 'CA', ext.start+5, 'CA',
-                               0, 0.785, 1.063, 1.063 + quadratic_cut, distance_force_constant)
+                               0, 0.785, 1.063, 1.063 + quadratic_cut, distance_force_constant,
+                               doing_eco=doing_eco, eco_factor=eco_factor, eco_constant=eco_constant, eco_linear=eco_linear)
         d3 = DistanceRestraint(system, scaler, ramp, ext.start+1, 'CA', ext.start+5, 'CA',
-                               0, 1.086, 1.394, 1.394 + quadratic_cut, distance_force_constant)
+                               0, 1.086, 1.394, 1.394 + quadratic_cut, distance_force_constant,
+                               doing_eco=doing_eco, eco_factor=eco_factor, eco_constant=eco_constant, eco_linear=eco_linear)
         rests.append(d1)
         rests.append(d2)
         rests.append(d3)
