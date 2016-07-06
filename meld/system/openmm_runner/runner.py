@@ -13,6 +13,7 @@ from meld.system.restraints import ConfinementRestraint, DistProfileRestraint, T
 from meld.system.restraints import CartesianRestraint, YZCartesianRestraint, XAxisCOMRestraint
 from meld.system.restraints import RdcRestraint, HyperbolicDistanceRestraint
 from . import softcore
+from . import membrane
 import cmap
 import logging
 from meld.util import log_timing
@@ -93,7 +94,9 @@ class OpenMMRunner(object):
             #else:
             #    self._sc_lambda_coulomb = 0.0
             #    self._sc_lambda_lj = 1.0 - (alpha - a2) / (a3 - a2)
-
+    
+    
+    
     @log_timing(logger)
     def minimize_then_run(self, state):
         return self._run(state, minimize=True)
@@ -139,6 +142,9 @@ class OpenMMRunner(object):
             sys = _create_openmm_system(prmtop, self._options.cutoff, self._options.use_big_timestep,
                                         self._options.use_bigger_timestep,
                                         self._options.implicit_solvent_model, self._options.remove_com)
+            
+            if self._options.membrane:
+                sys = membrane.add_membrane(sys)
             
             if self._options.softcore:
                 sys = softcore.add_soft_core(sys)
