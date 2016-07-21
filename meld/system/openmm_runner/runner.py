@@ -21,6 +21,7 @@ import numpy as np
 import tempfile
 
 logger = logging.getLogger(__name__)
+eco_log_filename = "eco.log"
 
 #try:
 from meldplugin import MeldForce, RdcForce, vectori
@@ -117,6 +118,7 @@ class OpenMMRunner(object):
         return e_potential
 
     def _initialize_simulation(self):
+        log_eco('eco_cutoff: %f nm' % self._options.eco_params['eco_cutoff'])
         if self._initialized:
             self._integrator.setTemperature(self._temperature)
             if self._options.softcore:
@@ -125,11 +127,13 @@ class OpenMMRunner(object):
                 self._simulation.context.setParameter('lj_lambda', self._sc_lambda_lj)
                 self._simulation.context.setParameter('sc_lambda', self._sc_lambda_lj)
                 logger.debug('set sc %d %f %f %f', self._rank, self._sc_lambda_coulomb, self._sc_lambda_lj, self._sc_lambda_lj)
-
+            
+            
+            
             meld_rests = _update_always_active_restraints(self._always_on_restraints, self._alpha,
                                                           self._timestep, self._force_dict)
             _update_selectively_active_restraints(self._selectable_collections, meld_rests, self._alpha,
-                                                  self._timestep, self._force_dict, self._options.eco_cutoff, self._options.alpha_carbon_indeces)
+                                                  self._timestep, self._force_dict, self._options.eco_params, self._options.alpha_carbon_indeces)
             for force in self._force_dict.values():
                 if force:
                     force.updateParametersInContext(self._simulation.context)
@@ -156,7 +160,7 @@ class OpenMMRunner(object):
             meld_rests = _add_always_active_restraints(sys, self._always_on_restraints, self._alpha,
                                                        self._timestep, self._force_dict)
             _add_selectively_active_restraints(sys, self._selectable_collections, meld_rests, self._alpha,
-                                               self._timestep, self._force_dict, self._options.eco_cutoff, self._options.alpha_carbon_indeces)
+                                               self._timestep, self._force_dict, self._options.eco_params, self._options.alpha_carbon_indeces)
                                                
             _add_alpha_carbon_list(self._system_atom_names)
 
@@ -340,7 +344,7 @@ def _update_always_active_restraints(restraint_list, alpha, timestep, force_dict
     return selectable_restraints
 
 
-def _add_selectively_active_restraints(system, collections, always_on, alpha, timestep, force_dict, eco_cutoff, alpha_carbon_indeces):
+def _add_selectively_active_restraints(system, collections, always_on, alpha, timestep, force_dict, eco_params, alpha_carbon_indeces):
     if not (collections or always_on):
         # we don't need to do anything
         force_dict['meld'] = None
@@ -348,9 +352,13 @@ def _add_selectively_active_restraints(system, collections, always_on, alpha, ti
 
     # otherwise we need a MeldForce
     meld_force = MeldForce()
-    #print "eco_cutoff:", eco_cutoff
     #print "alpha_carbon_list:", alpha_carbon_indeces
-    meld_force.setEcoCutoff(eco_cutoff)
+    meld_force.setEcoCutoff(eco_params['eco_cutoff'])
+    meld_force.setEcoOutputFreq(eco_params['eco_output_freq'])
+    meld_force.setPrintAvgEco(eco_params['print_avg_eco'])
+    meld_force.setPrintEcoValueArray(eco_params['print_eco_value_array'])
+    meld_force.setCurrentReplicaIndex(int(alpha))
+    meld_force.setStartingReplicaIndex(int(alpha))
     alpha_carbon_list = vectori()
     alpha_carbon_list = alpha_carbon_indeces #[3, 16, 25, 40, 49]
     meld_force.setAlphaCarbonVector(alpha_carbon_list)
@@ -405,7 +413,7 @@ def _add_alpha_carbon_list(atom_names):
     #print "alpha_carbon_list:", alpha_carbon_list
     #return alpha_carbon_list
 
-def _update_selectively_active_restraints(collections, always_on, alpha, timestep, force_dict, eco_cutoff, alpha_carbon_indeces):
+def _update_selectively_active_restraints(collections, always_on, alpha, timestep, force_dict, eco_params, alpha_carbon_indeces):
     meld_force = force_dict['meld']
     dist_index = 0
     hyper_index = 0
@@ -413,7 +421,12 @@ def _update_selectively_active_restraints(collections, always_on, alpha, timeste
     dist_prof_index = 0
     tors_prof_index = 0
     
-    meld_force.setEcoCutoff(eco_cutoff)
+    meld_force.setEcoCutoff(eco_params['eco_cutoff'])
+    meld_force.setEcoOutputFreq(eco_params['eco_output_freq'])
+    meld_force.setPrintAvgEco(eco_params['print_avg_eco'])
+    meld_force.setPrintEcoValueArray(eco_params['print_eco_value_array'])
+    meld_force.setCurrentReplicaIndex(alpha)
+    meld_force.setStartingReplicaIndex(alpha)
     alpha_carbon_list = vectori()
     alpha_carbon_list = alpha_carbon_indeces #[3, 16, 25, 40, 49]
     meld_force.setAlphaCarbonVector(alpha_carbon_list)
@@ -681,7 +694,11 @@ def _add_meld_restraint(rest, meld_force, alpha, timestep):
         rest_index = meld_force.addDistanceRestraint(rest.atom_index_1 - 1, rest.atom_index_2 - 1,
                                                     rest.r1, rest.r2, rest.r3, rest.r4,
                                                     rest.k * scale, rest.doing_eco, rest.eco_factor, rest.eco_constant, rest.eco_linear, rest.res_index1, rest.res_index2)
-
+        if rest.doing_eco: # if we are doing eco, then log this restraint
+          log_eco('Adding ECO to distance restraint between atom %d and atom %d in replica %d.' % (rest.atom_index_1 - 1, rest.atom_index_2 - 1, alpha))
+          log_eco('  in residue %d and residue %d' % (rest.res_index1, rest.res_index2))
+          log_eco('  eco_factor: %f, eco_constant: %f, eco_linear: %f' % (rest.eco_factor, rest.eco_constant, rest.eco_linear))
+          
     elif isinstance(rest, HyperbolicDistanceRestraint):
         rest_index = meld_force.addHyperbolicDistanceRestraint(rest.atom_index_1 - 1, rest.atom_index_2 - 1,
                                                                rest.r1, rest.r2, rest.r3, rest.r4,
@@ -806,3 +823,9 @@ class DefaultOrderedDict(OrderedDict):
     def __repr__(self):
         return 'OrderedDefaultDict(%s, %s)' % (self.default_factory,
                                         OrderedDict.__repr__(self))
+
+def log_eco(message):
+  eco_log_file = open(eco_log_filename, 'a') # open the file for appending
+  eco_log_file.write(message+'\n')
+  eco_log_file.close()
+  return
