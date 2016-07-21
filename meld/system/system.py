@@ -284,7 +284,7 @@ class RunOptions(object):
             'runner', 'timesteps', 'minimize_steps',
             'implicit_solvent_model', 'cutoff', 'use_big_timestep', 'use_bigger_timestep',
             'use_amap', 'amap_alpha_bias', 'amap_beta_bias',
-            'min_mc', 'run_mc', 'ccap', 'ncap', 'eco_cutoff', 'alpha_carbon_indeces']
+            'min_mc', 'run_mc', 'ccap', 'ncap', 'eco_params', 'alpha_carbon_indeces']
         allowed_attributes += ['_{}'.format(item) for item in allowed_attributes]
         if not name in allowed_attributes:
             raise ValueError('Attempted to set unknown attribute {}'.format(name))
@@ -312,7 +312,8 @@ class RunOptions(object):
         self._run_mc = None
         self._ccap = False
         self._ncap = False
-        self._eco_cutoff = 0.0
+        #self._eco_cutoff = 0.0
+        self._eco_params = {'eco_cutoff':0, 'eco_output_freq':1000, 'print_avg_eco':True, 'print_eco_value_array':False}
         self._alpha_carbon_indeces = []
 
     @property
@@ -428,18 +429,18 @@ class RunOptions(object):
             self._cutoff = value
             
     @property
-    def eco_cutoff(self):
-        return self._eco_cutoff
+    def eco_params(self):
+        return self._eco_params
 
-    @eco_cutoff.setter
-    def eco_cutoff(self, value):
+    @eco_params.setter
+    def eco_params(self, value):
         if value is None:
-            self._eco_cutoff = None
+            self._eco_params = None
         else:
-            value = float(value)
-            if value <= 0:
+            cutoff_value = float(value['eco_cutoff'])
+            if cutoff_value <= 0:
                 raise RuntimeError('eco_cutoff must be > 0')
-            self._eco_cutoff = value
+            self._eco_params = value
     
     @property
     def alpha_carbon_indeces(self):
