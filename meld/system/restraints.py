@@ -254,6 +254,37 @@ class TorsProfileRestraint(SelectableRestraint):
         assert self.spline_params.shape[0] == n_params
         assert self.spline_params.shape[1] == 16
 
+class CartProfileRestraint(SelectableRestraint):
+    _restraint_key_ = 'cart_prof'
+
+    def __init__(self, system, scaler, ramp,
+                 atom_res_index, atom_name, startingCoeff, dimx, dimy, dimz, resx, resy, resz, 
+                 origx, origy, origz, global_spline_params, scale_factor, cartRestIndex):
+        self.scaler = scaler
+        self.ramp = ramp
+        self.atom_index = system.index_of_atom(atom_res_index, atom_name) # list of atoms?
+        self.startingCoeff = startingCoeff
+        self.dimx = dimx
+        self.dimy = dimy
+        self.dimz = dimz
+        self.resx = resx
+        self.resy = resy
+        self.resz = resz
+        self.origx = origx
+        self.origy = origy
+        self.origz = origz
+        self.global_spline_params = global_spline_params 
+        self.scale_factor = scale_factor
+        self.cartRestIndex = cartRestIndex
+        self._check()
+        
+
+    def _check(self):
+        assert self.dimx > 0 and self.dimy > 0 and self.dimz > 0
+        assert self.resx > 0.0 and self.resy > 0.0 and self.resz > 0.0
+        
+        n_params = (self.dimx) * (self.dimy) * (self.dimz) * 64
+        #assert len(self.spline_params) == n_params, "Number of spline parameters: %d, doesn't match the the number of parameters that there should be from the grid size: %d" % (len(self.spline_params),n_params)
 
 class RdcRestraint(NonSelectableRestraint):
     """

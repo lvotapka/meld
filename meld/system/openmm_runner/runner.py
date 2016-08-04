@@ -9,7 +9,7 @@ from simtk.openmm import LangevinIntegrator, Platform, CustomExternalForce
 from simtk.unit import kelvin, picosecond, femtosecond, angstrom
 from simtk.unit import Quantity, kilojoule, mole, gram
 from meld.system.restraints import SelectableRestraint, NonSelectableRestraint, DistanceRestraint, TorsionRestraint
-from meld.system.restraints import ConfinementRestraint, DistProfileRestraint, TorsProfileRestraint
+from meld.system.restraints import ConfinementRestraint, DistProfileRestraint, TorsProfileRestraint, CartProfileRestraint
 from meld.system.restraints import CartesianRestraint, YZCartesianRestraint, XAxisCOMRestraint
 from meld.system.restraints import RdcRestraint, HyperbolicDistanceRestraint
 from . import softcore
@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 eco_log_filename = "eco.log"
 
 #try:
-from meldplugin import MeldForce, RdcForce, vectori
+from meldplugin import MeldForce, RdcForce, vectori, vectorf
 #except ImportError as e:
 #    logger.warning('Could not import meldplugin. Are you sure it is installed correctly?\n'
 #                   'Attempts to use meld restraints will fail.')
@@ -729,6 +729,18 @@ def _add_meld_restraint(rest, meld_force, alpha, timestep):
                                                         rest.spline_params[:, 12], rest.spline_params[:, 13],
                                                         rest.spline_params[:, 14], rest.spline_params[:, 15],
                                                         rest.scale_factor * scale)
+    elif isinstance(rest, CartProfileRestraint):
+        rest_index = meld_force.addCartProfileRestraint(rest.atom_index - 1, rest.startingCoeff,
+                                                        rest.dimx, rest.dimy, rest.dimz,
+                                                        rest.resx, rest.resy, rest.resz,
+                                                        rest.origx, rest.origy, rest.origz,
+                                                        rest.scale_factor * scale) # pass the coefficients in this step? probably not
+        if (rest.startingCoeff == 0) and (rest.cartRestIndex == 0): # then we need to upload the global coefficient array
+            print "Uploading Global Cartesian Profile Restraint Coefficients"
+            globalCartProfileRestCoeffs = vectorf()
+            #print "rest.global_spline_params:", rest.global_spline_params
+            globalCartProfileRestCoeffs = rest.global_spline_params 
+            meld_force.uploadCartProfileRestCoeffs(globalCartProfileRestCoeffs)
     else:
         raise RuntimeError('Do not know how to handle restraint {}'.format(rest))
     return rest_index
@@ -772,6 +784,12 @@ def _update_meld_restraint(rest, meld_force, alpha, timestep, dist_index, hyper_
                                               rest.spline_params[:, 14], rest.spline_params[:, 15],
                                               rest.scale_factor * scale)
         tors_prof_index += 1
+    elif isinstance(rest, CartProfileRestraint):
+        meld_force.modifyCartProfileRestraint(rest.atom_index - 1, rest.startingCoeff,
+                                                        rest.dimx, rest.dimy, rest.dimz,
+                                                        rest.resx, rest.resy, rest.resz,
+                                                        rest.origx, rest.origy, rest.origz,
+                                                        rest.scale_factor * scale) # pass the coefficients in this step? probably not
     else:
         raise RuntimeError('Do not know how to handle restraint {}'.format(rest))
     return dist_index, hyper_index, tors_index, dist_prof_index, tors_prof_index
