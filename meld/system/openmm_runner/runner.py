@@ -688,7 +688,7 @@ def _add_meld_restraint(rest, meld_force, alpha, timestep):
         rest_index = meld_force.addDistanceRestraint(rest.atom_index_1 - 1, rest.atom_index_2 - 1,
                                                     rest.r1, rest.r2, rest.r3, rest.r4,
                                                     rest.k * scale, rest.doing_eco, rest.eco_factor, rest.eco_constant, rest.eco_linear, rest.res_index1, rest.res_index2)
-        if rest.doing_eco: # if we are doing eco, then log this restraint
+        if rest.doing_eco and alpha==0: # if we are doing eco, then log this restraint
           log_eco('Adding ECO to distance restraint between atom %d and atom %d in replica %d.' % (rest.atom_index_1 - 1, rest.atom_index_2 - 1, alpha))
           log_eco('  in residue %d and residue %d' % (rest.res_index1, rest.res_index2))
           log_eco('  eco_factor: %f, eco_constant: %f, eco_linear: %f' % (rest.eco_factor, rest.eco_constant, rest.eco_linear))
