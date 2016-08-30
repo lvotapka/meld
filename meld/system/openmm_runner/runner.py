@@ -419,8 +419,8 @@ def _update_selectively_active_restraints(collections, always_on, alpha, timeste
     meld_force.setEcoOutputFreq(eco_params['eco_output_freq'])
     meld_force.setPrintAvgEco(eco_params['print_avg_eco'])
     meld_force.setPrintEcoValueArray(eco_params['print_eco_value_array'])
-    meld_force.setCurrentReplicaIndex(alpha)
-    meld_force.setStartingReplicaIndex(alpha)
+    meld_force.setCurrentReplicaIndex(int(alpha))
+    meld_force.setStartingReplicaIndex(int(alpha))
     alpha_carbon_list = vectori()
     alpha_carbon_list = alpha_carbon_indeces #[3, 16, 25, 40, 49]
     meld_force.setAlphaCarbonVector(alpha_carbon_list)
