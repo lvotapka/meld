@@ -124,7 +124,7 @@ def get_sequence_from_AA3(filename=None, contents=None, file=None, capped=False,
 
 def get_secondary_structure_restraints(system, scaler, ramp=None, torsion_force_constant=2.48, distance_force_constant=2.48,
                                        quadratic_cut=2.0, filename=None, contents=None, file=None, doing_eco=False, 
-                                       eco_factor=0.0, eco_constant=1.0, eco_linear=0.0):
+                                       eco_factor=0.0, eco_constant=1.0, eco_linear=0.0, run_length=5, at_least=4):
     """
     Get a list of secondary structure restraints.
 
@@ -150,7 +150,7 @@ def get_secondary_structure_restraints(system, scaler, ramp=None, torsion_force_
 
     groups = []
 
-    helices = _extract_secondary_runs(contents, 'H', 5, 4)
+    helices = _extract_secondary_runs(contents, 'H', run_length, at_least)
     for helix in helices:
         rests = []
         for index in range(helix.start + 1, helix.end - 1):
@@ -175,7 +175,7 @@ def get_secondary_structure_restraints(system, scaler, ramp=None, torsion_force_
         group = RestraintGroup(rests, len(rests))
         groups.append(group)
 
-    extended = _extract_secondary_runs(contents, 'E', 5, 4)
+    extended = _extract_secondary_runs(contents, 'E', run_length, at_least)
     for ext in extended:
         rests = []
         for index in range(ext.start + 1, ext.end - 1):

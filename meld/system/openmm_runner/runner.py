@@ -420,13 +420,14 @@ def _update_selectively_active_restraints(collections, always_on, alpha, timeste
     tors_index = 0
     dist_prof_index = 0
     tors_prof_index = 0
+    cart_prof_index = 0
     
     meld_force.setEcoCutoff(eco_params['eco_cutoff'])
     meld_force.setEcoOutputFreq(eco_params['eco_output_freq'])
     meld_force.setPrintAvgEco(eco_params['print_avg_eco'])
     meld_force.setPrintEcoValueArray(eco_params['print_eco_value_array'])
-    meld_force.setCurrentReplicaIndex(alpha)
-    meld_force.setStartingReplicaIndex(alpha)
+    meld_force.setCurrentReplicaIndex(int(alpha))
+    meld_force.setStartingReplicaIndex(int(alpha))
     alpha_carbon_list = vectori()
     alpha_carbon_list = alpha_carbon_indeces #[3, 16, 25, 40, 49]
     meld_force.setAlphaCarbonVector(alpha_carbon_list)
@@ -435,8 +436,8 @@ def _update_selectively_active_restraints(collections, always_on, alpha, timeste
     
     if always_on:
         for rest in always_on:
-            dist_index, hyper_index, tors_index, dist_prof_index, tors_prof_index = _update_meld_restraint(rest, meld_force, alpha, timestep,
-                                                                            dist_index, hyper_index, tors_index, dist_prof_index, tors_prof_index)
+            dist_index, hyper_index, tors_index, dist_prof_index, tors_prof_index, cart_prof_index = _update_meld_restraint(rest, meld_force, alpha, timestep,
+                                                                            dist_index, hyper_index, tors_index, dist_prof_index, tors_prof_index, cart_prof_index)
     for coll in collections:
         for group in coll.groups:
             for rest in group.restraints:
@@ -444,8 +445,8 @@ def _update_selectively_active_restraints(collections, always_on, alpha, timeste
                   rest_tuple = (rest.res_index1, rest.res_index2, counter) # LANE: zeroth = restraint residue 1, first = restraint residue 2, second = restraint index
                   dist_rest_sorted.append(rest_tuple)
                 counter += 1
-                dist_index, hyper_index, tors_index, dist_prof_index, tors_prof_index = _update_meld_restraint(rest, meld_force, alpha, timestep,
-                                                                             dist_index, hyper_index, tors_index, dist_prof_index, tors_prof_index)
+                dist_index, hyper_index, tors_index, dist_prof_index, tors_prof_index, cart_prof_index = _update_meld_restraint(rest, meld_force, alpha, timestep,
+                                                                             dist_index, hyper_index, tors_index, dist_prof_index, tors_prof_index, cart_prof_index)
     # LANE: sort the distance restraint list
     dist_rest_sorted.sort()
     dist_rest_sorted_flat = [] # a list that will be 1-D, but holds the restraints in order
@@ -464,14 +465,15 @@ def _add_confinement_restraints(system, restraint_list, alpha, timestep, force_d
     if confinement_restraints:
         # create the confinement force
         confinement_force = CustomExternalForce(
-            'step(r - radius) * force_const * (radius - r)^2; r=sqrt(x*x + y*y + z*z)')
+            'step(r - radius) * force_const * (radius - r)^2; r=sqrt(x*x + y*y + z_factor*z*z)')
         confinement_force.addPerParticleParameter('radius')
         confinement_force.addPerParticleParameter('force_const')
+        confinement_force.addPerParticleParameter('z_factor') # whether or not confinement in the z-direction is counted
 
         # add the atoms
         for r in confinement_restraints:
             weight = r.force_const * r.scaler(alpha) * r.ramp(timestep)
-            confinement_force.addParticle(r.atom_index - 1, [r.radius, weight])
+            confinement_force.addParticle(r.atom_index - 1, [r.radius, weight, r.z_factor])
         system.addForce(confinement_force)
         force_dict['confine'] = confinement_force
     else:
@@ -746,7 +748,7 @@ def _add_meld_restraint(rest, meld_force, alpha, timestep):
     return rest_index
 
 
-def _update_meld_restraint(rest, meld_force, alpha, timestep, dist_index, hyper_index, tors_index, dist_prof_index, tors_prof_index):
+def _update_meld_restraint(rest, meld_force, alpha, timestep, dist_index, hyper_index, tors_index, dist_prof_index, tors_prof_index, cart_prof_index):
     scale = rest.scaler(alpha) * rest.ramp(timestep)
     if isinstance(rest, DistanceRestraint):
         meld_force.modifyDistanceRestraint(dist_index, rest.atom_index_1 - 1, rest.atom_index_2 - 1, rest.r1,
@@ -785,14 +787,15 @@ def _update_meld_restraint(rest, meld_force, alpha, timestep, dist_index, hyper_
                                               rest.scale_factor * scale)
         tors_prof_index += 1
     elif isinstance(rest, CartProfileRestraint):
-        meld_force.modifyCartProfileRestraint(rest.atom_index - 1, rest.startingCoeff,
+        meld_force.modifyCartProfileRestraint(cart_prof_index, rest.atom_index - 1, rest.startingCoeff,
                                                         rest.dimx, rest.dimy, rest.dimz,
                                                         rest.resx, rest.resy, rest.resz,
                                                         rest.origx, rest.origy, rest.origz,
                                                         rest.scale_factor * scale) # pass the coefficients in this step? probably not
+        cart_prof_index += 1
     else:
         raise RuntimeError('Do not know how to handle restraint {}'.format(rest))
-    return dist_index, hyper_index, tors_index, dist_prof_index, tors_prof_index
+    return dist_index, hyper_index, tors_index, dist_prof_index, tors_prof_index, cart_prof_index
 
 
 #

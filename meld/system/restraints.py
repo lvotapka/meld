@@ -357,13 +357,17 @@ class ConfinementRestraint(NonSelectableRestraint):
 
     _restraint_key_ = 'confine'
 
-    def __init__(self, system, scaler, ramp, res_index, atom_name, radius, force_const):
+    def __init__(self, system, scaler, ramp, res_index, atom_name, radius, force_const, x_y_only=False):
         self.atom_index = system.index_of_atom(res_index, atom_name)
         self.radius = float(radius)
         self.force_const = float(force_const)
         self.scaler = scaler
         self.ramp = ramp
         self._check(system)
+        if x_y_only:
+          self.z_factor = 0
+        else:
+          self.z_factor = 1
 
     def _check(self, system):
         if self.radius < 0:
