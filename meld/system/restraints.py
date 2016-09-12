@@ -366,6 +366,7 @@ class ConfinementRestraint(NonSelectableRestraint):
         self._check(system)
         if x_y_only:
           self.z_factor = 0
+          #print "Applying confinement restraint in only the x and y directions..."
         else:
           self.z_factor = 1
 
