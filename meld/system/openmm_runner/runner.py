@@ -414,6 +414,11 @@ def _add_alpha_carbon_list(atom_names):
     #return alpha_carbon_list
 
 def _update_selectively_active_restraints(collections, always_on, alpha, timestep, force_dict, eco_params, alpha_carbon_indeces):
+    if not (collections or always_on):
+        # we don't need to do anything
+        #force_dict['meld'] = None
+        return
+    
     meld_force = force_dict['meld']
     dist_index = 0
     hyper_index = 0

@@ -170,7 +170,7 @@ class ProteinMoleculeFromSequence(ProteinBase):
 
     def generate_tleap_input(self, mol_id):
         leap_cmds = []
-        leap_cmds.append('source leaprc.gaff')
+        #leap_cmds.append('source leaprc.gaff') # Carlos recommended to leave this out
         leap_cmds.extend(self._gen_read_frcmod_string())
         leap_cmds.extend(self._gen_read_prep_string())
         leap_cmds.extend(self._gen_read_lib_string())
