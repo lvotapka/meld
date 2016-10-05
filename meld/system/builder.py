@@ -6,6 +6,7 @@
 from meld import util
 from .system import System
 import subprocess
+import os
 
 
 class SystemBuilder(object):
@@ -16,12 +17,14 @@ class SystemBuilder(object):
         self._set_gb_radii(gb_radii)
 
     def build_system_from_molecules(self, molecules):
+        print "molecules", molecules
         with util.in_temp_dir():
             leap_cmds = []
             mol_ids = []
             leap_cmds.extend(self._generate_leap_header())
             for index, mol in enumerate(molecules):
                 mol_id = 'mol_{}'.format(index)
+                print "mol_id:", mol_id
                 mol_ids.append(mol_id)
                 mol.prepare_for_tleap(mol_id)
                 leap_cmds.extend(mol.generate_tleap_input(mol_id))
@@ -31,6 +34,8 @@ class SystemBuilder(object):
                 tleap_file.write(tleap_string)
                 print tleap_string
             subprocess.check_call('tleap -f tleap.in > tleap.out', shell=True)
+            os.system('cp system.top /home/lvotapka/tmp')
+            os.system('cp system.mdcrd /home/lvotapka/tmp')
             with open('system.top') as top_file:
                 top = top_file.read()
             with open('system.mdcrd') as crd_file:

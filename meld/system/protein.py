@@ -5,6 +5,7 @@
 
 import numpy as np
 import math
+import os
 
 
 class ProteinBase(object):
@@ -170,7 +171,7 @@ class ProteinMoleculeFromSequence(ProteinBase):
 
     def generate_tleap_input(self, mol_id):
         leap_cmds = []
-        #leap_cmds.append('source leaprc.gaff') # Carlos recommended to leave this out
+        leap_cmds.append('source leaprc.gaff') # Carlos recommended to leave this out
         leap_cmds.extend(self._gen_read_frcmod_string())
         leap_cmds.extend(self._gen_read_prep_string())
         leap_cmds.extend(self._gen_read_lib_string())
@@ -202,8 +203,10 @@ class ProteinMoleculeFromPdbFile(ProteinBase):
     def prepare_for_tleap(self, mol_id):
         # copy the contents of the pdb file into the current working directory
         pdb_path = '{mol_id}.pdb'.format(mol_id=mol_id)
+        print "pdb_path:", pdb_path
         with open(pdb_path, 'w') as pdb_file:
             pdb_file.write(self._pdb_contents)
+        os.system('cp %s /home/lvotapka/tmp/mol.pdb' % pdb_path)
 
     def generate_tleap_input(self, mol_id):
         leap_cmds = []

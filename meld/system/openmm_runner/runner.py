@@ -148,7 +148,7 @@ class OpenMMRunner(object):
                                         self._options.implicit_solvent_model, self._options.remove_com)
             
             if self._options.membrane:
-                sys = membrane.add_membrane(sys)
+                sys = membrane.add_membrane(sys, implicit_solvent=self._options.implicit_solvent_model)
             
             if self._options.softcore:
                 sys = softcore.add_soft_core(sys)
@@ -279,9 +279,11 @@ def _create_openmm_system(parm_object, cutoff, use_big_timestep, use_bigger_time
     else:
         constraint_type = ff.HBonds
         hydrogen_mass = None
-
+    
+    implicit_solvent_kappa = 0.0
     if implicit_solvent == 'obc':
         implicit_type = OBC2
+        implicit_solvent_kappa = 0.01
     elif implicit_solvent == 'gbNeck':
         implicit_type = GBn
     elif implicit_solvent == 'gbNeck2':
@@ -293,7 +295,7 @@ def _create_openmm_system(parm_object, cutoff, use_big_timestep, use_bigger_time
     else:
         RuntimeError('Should never get here')
     return parm_object.createSystem(nonbondedMethod=cutoff_type, nonbondedCutoff=cutoff_dist,
-                                    constraints=constraint_type, implicitSolvent=implicit_type,
+                                    constraints=constraint_type, implicitSolvent=implicit_type, implicitSolventKappa=implicit_solvent_kappa,
                                     removeCMMotion=remove_com, hydrogenMass=hydrogen_mass)
 
 
