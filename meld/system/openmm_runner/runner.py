@@ -145,7 +145,8 @@ class OpenMMRunner(object):
             prmtop = _parm_top_from_string(self._parm_string)
             sys = _create_openmm_system(prmtop, self._options.cutoff, self._options.use_big_timestep,
                                         self._options.use_bigger_timestep,
-                                        self._options.implicit_solvent_model, self._options.remove_com)
+                                        self._options.implicit_solvent_model, self._options.remove_com,
+                                        self._options.soluteDielectric, self._options.solventDielectric)
             
             if self._options.membrane:
                 sys = membrane.add_membrane(sys, implicit_solvent=self._options.implicit_solvent_model)
@@ -262,7 +263,7 @@ def _parm_top_from_string(parm_string):
         return prm_top
 
 
-def _create_openmm_system(parm_object, cutoff, use_big_timestep, use_bigger_timestep, implicit_solvent, remove_com):
+def _create_openmm_system(parm_object, cutoff, use_big_timestep, use_bigger_timestep, implicit_solvent, remove_com, soluteDielectric=1.0, solventDielectric=78.5):
     if cutoff is None:
         cutoff_type = ff.NoCutoff
         cutoff_dist = 999.
@@ -296,7 +297,7 @@ def _create_openmm_system(parm_object, cutoff, use_big_timestep, use_bigger_time
         RuntimeError('Should never get here')
     return parm_object.createSystem(nonbondedMethod=cutoff_type, nonbondedCutoff=cutoff_dist,
                                     constraints=constraint_type, implicitSolvent=implicit_type, implicitSolventKappa=implicit_solvent_kappa,
-                                    removeCMMotion=remove_com, hydrogenMass=hydrogen_mass)
+                                    soluteDielectric=soluteDielectric, solventDielectric=solventDielectric, removeCMMotion=remove_com, hydrogenMass=hydrogen_mass)
 
 
 def _create_integrator(temperature, use_big_timestep, use_bigger_timestep):

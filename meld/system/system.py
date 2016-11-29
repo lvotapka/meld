@@ -283,7 +283,7 @@ class RunOptions(object):
             'sc_alpha_max_coulomb', 'sc_alpha_max_lennard_jones',
             'runner', 'timesteps', 'minimize_steps',
             'implicit_solvent_model', 'cutoff', 'use_big_timestep', 'use_bigger_timestep',
-            'use_amap', 'amap_alpha_bias', 'amap_beta_bias',
+            'soluteDielectric','solventDielectric','use_amap', 'amap_alpha_bias', 'amap_beta_bias',
             'min_mc', 'run_mc', 'ccap', 'ncap', 'eco_params', 'alpha_carbon_indeces']
         allowed_attributes += ['_{}'.format(item) for item in allowed_attributes]
         if not name in allowed_attributes:
@@ -296,6 +296,8 @@ class RunOptions(object):
         self._timesteps = 5000
         self._minimize_steps = 1000
         self._implicit_solvent_model = 'gbNeck2'
+        self._soluteDielectric = 1.0
+        self._solventDielectric = 78.5
         self._cutoff = None
         
         self._use_big_timestep = False
@@ -422,6 +424,22 @@ class RunOptions(object):
         if not value in [None, 'obc', 'gbNeck', 'gbNeck2', 'vacuum']:
             raise RuntimeError('unknown value for implicit solvent model {}'.format(value))
         self._implicit_solvent_model = value
+        
+    @property
+    def soluteDielectric(self):
+        return self._soluteDielectric
+    
+    @soluteDielectric.setter
+    def soluteDielectric(self, value):
+        self._soluteDielectric = value
+
+    @property
+    def solventDielectric(self):
+        return self._solventDielectric
+    
+    @solventDielectric.setter
+    def solventDielectric(self, value):
+        self._solventDielectric = value
 
     @property
     def cutoff(self):
