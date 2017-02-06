@@ -279,7 +279,7 @@ class RunOptions(object):
         # all others will raise an error, which catches
         # typos
         allowed_attributes = [
-            'remove_com', 'softcore', 'membrane', 'sc_alpha_min',
+            'remove_com', 'softcore', 'membrane', 'diel_ramp', 'sc_alpha_min',
             'sc_alpha_max_coulomb', 'sc_alpha_max_lennard_jones',
             'runner', 'timesteps', 'minimize_steps',
             'implicit_solvent_model', 'cutoff', 'use_big_timestep', 'use_bigger_timestep',
@@ -307,6 +307,7 @@ class RunOptions(object):
         self._amap_beta_bias = 1.0
         self._softcore = False
         self._membrane = False
+        self._diel_ramp = False
         self._sc_alpha_min = 0.0
         self._sc_alpha_max_coulomb = 0.3
         self._sc_alpha_max_lennard_jones = 1.0
@@ -355,6 +356,14 @@ class RunOptions(object):
     @membrane.setter
     def membrane(self, new_value):
         self._membrane = bool(new_value)
+        
+    @property
+    def diel_ramp(self):
+        return self._diel_ramp
+        
+    @diel_ramp.setter
+    def diel_ramp(self, new_value):
+        self._diel_ramp = bool(new_value)
 
     @property
     def sc_alpha_min(self):

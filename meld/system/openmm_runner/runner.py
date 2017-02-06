@@ -148,8 +148,12 @@ class OpenMMRunner(object):
                                         self._options.implicit_solvent_model, self._options.remove_com,
                                         self._options.soluteDielectric, self._options.solventDielectric)
             
+            #print "self._options.membrane:", self._options.membrane, "self._options.diel_ramp:", self._options.diel_ramp
             if self._options.membrane:
                 sys = membrane.add_membrane(sys, implicit_solvent=self._options.implicit_solvent_model)
+                
+            if self._options.diel_ramp:
+                sys = membrane.add_diel_ramp(sys, self._alpha)
             
             if self._options.softcore:
                 sys = softcore.add_soft_core(sys)

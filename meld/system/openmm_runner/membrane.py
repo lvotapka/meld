@@ -145,6 +145,28 @@ def _get_membrane_force(gb_charges, gb_radii, gb_scale, solventDielectric=78.5, 
         custom.addParticle([c, r, s])
 
     return custom
+  
+def _get_diel_ramp_force(nb_charges, nb_radii, nb_scale, alpha, nb_exceptions, reference_force=None):
+    custom = mm.NonbondedForce()
+    custom.setNonbondedMethod(reference_force.getNonbondedMethod())
+    custom.setCutoffDistance(reference_force.getCutoffDistance())
+    
+    for charge, radius, scale in zip(nb_charges, nb_radii, nb_scale):
+        new_charge = charge * 1/sqrt(alpha+1)
+        #print "new_charge:", new_charge
+        custom.addParticle(new_charge, radius, scale)
+        
+    for exception in nb_exceptions:
+        '''particle1 = exception[0]
+        particle2 = 
+        chargeProd = 
+        sigma = 
+        epsilon = '''
+        exception[2] *= 1/(alpha+1) # change the charge product by the alpha
+        #custom.addException(particle1, particle2, chargeProd, sigma, epsilon)
+        custom.addException(*exception)
+
+    return custom
 
 def _get_membrane_force_old(gb_charges, gb_radii, gb_scale, solventDielectric=78.5, soluteDielectric=1, thickness=5., SA=None, reference_force=None):
     custom = mm.CustomGBForce()
@@ -175,6 +197,50 @@ def _get_membrane_force_old(gb_charges, gb_radii, gb_scale, solventDielectric=78
 
     return custom
 
+def add_diel_ramp(system, alpha):
+    system_xml = mm.XmlSerializer.serializeSystem(system)
+    fo = open('no_diel_ramp.dat','w')
+    fo.write(system_xml)
+    fo.close()
+
+    # grab and remove the non-bonded force
+    print "grab and remove the non-bonded force"
+    root = ET.fromstring(system_xml)
+    nb_string = _extract_force(root, 'NonbondedForce')
+    #gb_string = _extract_force(root, 'GBSAOBCForce')
+    #gb_string = _extract_force(root, 'CustomGBForce')
+    
+    
+    
+    #print "nb_string:", nb_string
+    #print "gb_string:", gb_string # this is None
+    
+    #assert implicit_solvent == 'obc', "Only gbNeck implemented currently. %s has not yet been included as a MELD membrane model." % implicit_solvent
+
+    nb_force = mm.XmlSerializer.deserialize(ET.tostring(nb_string))
+
+    n_particles = nb_force.getNumParticles()
+    n_exceptions = nb_force.getNumExceptions()
+
+    # extract the non-bonded parameters
+    new_system = mm.XmlSerializer.deserializeSystem(ET.tostring(root))
+
+    # extract the gb_parameters
+    if nb_string is not None:
+        nb_force = mm.XmlSerializer.deserialize(ET.tostring(nb_string))
+        nb_params = [nb_force.getParticleParameters(i) for i in range(n_particles)]
+        nb_exceptions = [nb_force.getExceptionParameters(i) for i in range(n_exceptions)]
+        #print "nb_params:", nb_params
+        nb_charge = [p[0] for p in nb_params]
+        nb_radius = [p[1] for p in nb_params]
+        nb_scale = [p[2] for p in nb_params]
+        diel_ramp_force = _get_diel_ramp_force(nb_charge, nb_radius, nb_scale, alpha, nb_exceptions, reference_force=nb_force)
+        new_system.addForce(diel_ramp_force)
+    new_xml = mm.XmlSerializer.serializeSystem(new_system)
+    fo = open('diel_ramp.dat','w')
+    fo.write(new_xml)
+    fo.close()
+    return new_system
 
 def add_membrane(system, sigma_min=0.151, implicit_solvent="obc"):
     system_xml = mm.XmlSerializer.serializeSystem(system)
@@ -189,10 +255,12 @@ def add_membrane(system, sigma_min=0.151, implicit_solvent="obc"):
     #gb_string = _extract_force(root, 'GBSAOBCForce')
     gb_string = _extract_force(root, 'CustomGBForce')
     
-    assert implicit_solvent == 'obc', "Only gbNeck implemented currently. %s has not yet been included as a MELD membrane model." % implicit_solvent
+    
     
     print "nb_string:", nb_string
     print "gb_string:", gb_string # this is None
+    
+    assert implicit_solvent == 'obc', "Only gbNeck implemented currently. %s has not yet been included as a MELD membrane model." % implicit_solvent
 
     nb_force = mm.XmlSerializer.deserialize(ET.tostring(nb_string))
 
