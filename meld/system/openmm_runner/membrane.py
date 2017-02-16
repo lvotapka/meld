@@ -151,8 +151,11 @@ def _get_diel_ramp_force(nb_charges, nb_radii, nb_scale, alpha, nb_exceptions, r
     custom.setNonbondedMethod(reference_force.getNonbondedMethod())
     custom.setCutoffDistance(reference_force.getCutoffDistance())
     
+    base_diel = 4.0
+    alpha_factor = 3.0
+    
     for charge, radius, scale in zip(nb_charges, nb_radii, nb_scale):
-        new_charge = charge * 1/sqrt(alpha+1)
+        new_charge = charge * 1/sqrt(alpha_factor * alpha + base_diel)
         #print "new_charge:", new_charge
         custom.addParticle(new_charge, radius, scale)
         
@@ -162,7 +165,7 @@ def _get_diel_ramp_force(nb_charges, nb_radii, nb_scale, alpha, nb_exceptions, r
         chargeProd = 
         sigma = 
         epsilon = '''
-        exception[2] *= 1/(alpha+1) # change the charge product by the alpha
+        exception[2] *= 1/(alpha_factor * alpha + base_diel) # change the charge product by the alpha
         #custom.addException(particle1, particle2, chargeProd, sigma, epsilon)
         custom.addException(*exception)
 
